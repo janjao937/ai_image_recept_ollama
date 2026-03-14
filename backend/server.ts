@@ -3,6 +3,7 @@ import multipart from '@fastify/multipart';
 import cors from '@fastify/cors';
 import { Ollama } from 'ollama';
 import sharp from 'sharp';
+import { AllShopPromp } from "./content-promps.ts";
 
 const fastify = Fastify({ logger: true });
 const ollama = new Ollama({ host: process.env.OLLAMA_HOST || 'http://localhost:11434' });
@@ -16,7 +17,7 @@ fastify.post('/api/scan', async (request, reply) => {
 
   try {
     const buffer = await data.toBuffer();
-    // ปรับภาพให้ AI อ่านง่าย (Grayscale + Rotate auto)
+    // (Grayscale + Rotate auto)
     const processed = await sharp(buffer).rotate().grayscale().normalize().toBuffer();
     const base64 = processed.toString('base64');
 
@@ -24,10 +25,16 @@ fastify.post('/api/scan', async (request, reply) => {
       model: 'llama3.2-vision',
       messages: [{
         role: 'user',
-        content: 'Scan receipt. Return ONLY JSON: {"store":"","items":[{"name":"","price":0}],"total":0}. Support Thai.',
+        // content: 'Scan receipt. Return ONLY JSON: {"store":"","items":[{"name":"","price":0}],"total":0}. Support Thai.',
+        content: AllShopPromp,
         images: [base64]
       }],
-      format: 'json'
+      format: 'json',
+      options: {
+        temperature: 0,      
+        top_p: 0.1,       
+        num_predict: 1024 
+      }
     });
 
     return JSON.parse(response.message.content);
